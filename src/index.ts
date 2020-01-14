@@ -5,7 +5,7 @@ import { debug } from 'debug';
 
 import App from './App';
 
-const port = normalizePort(process.env.PORT || 3001);
+const port = normalizePort(process.env.PORT || 3000);
 App.set('port', port);
 
 const server = http.createServer(App);
