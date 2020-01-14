@@ -9,7 +9,7 @@ import * as bodyParser from 'body-parser';
 // import { Constants } from './helper/Constants';
 // import { User, IUser, IUserModel } from './schema/User';
 // import { Promise } from 'bluebird';
-import { dbHelper } from './helper/DBHelper';
+import { dbHelper } from './Helper/DBHelper';
 // import { VendorController } from './controllers/VendorController';
 // import { Validator } from 'express-validator';
 import * as expressValidator from 'express-validator';
