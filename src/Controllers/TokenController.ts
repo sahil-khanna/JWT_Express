@@ -93,7 +93,7 @@ export class TokenController {
             {$set: {
                 status: request.body["status"],
                 "data.authorizedURLs": request.body["authorizedURLs"],
-                "data.issuer.expiresOn": request.body["issuer.expiresOn"]
+                "data.expiresOn": request.body["expiresOn"]
             }})
         .then((_dbResult) => {
             return response.json({
