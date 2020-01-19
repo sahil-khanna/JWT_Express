@@ -18,7 +18,7 @@ export class TokenController {
         request.checkBody('issuer.clientEmail', Constants.INVALID_CLIENT_EMAIL).isEmail();
         request.checkBody('issuer.clientCompany', Constants.INVALID_CLIENT_COMPANY).isString();
         request.checkBody('issuer.providerEmail', Constants.INVALID_PROVIDER_EMAIL).isEmail();
-        // request.checkBody('issuer.expiresOn', Constants.INVALID_EXPIRY_DATE).toDate();
+        request.checkBody('expiresOn', Constants.INVALID_EXPIRY_DATE).isNumeric();
         request.checkBody('authorizedURLs', Constants.INVALID_AUTHORIZED_URLS).isArray();
 
         let errors: any = request.validationErrors();
@@ -40,6 +40,7 @@ export class TokenController {
             data: {
                 issuer: request.body["issuer"],
                 authorizedURLs: request.body["authorizedURLs"],
+                expiresOn: request.body["expiresOn"]
             },
             status: true
         }
@@ -138,24 +139,14 @@ export class TokenController {
 			});
         }
 
-        var tokenDetails = null;
-        try {
-            tokenDetails = jwt.verify(request.header("e-token"), this.JWT_PASSWORD);
-        } catch(err) {
-            return response.json({
-                code: 404,
-                message: Constants.INVALID_TOKEN
-            });
-        }
-
         // Delete the existing record
         dbHelper.db.collection("clients").deleteOne(
-            {_id: new ObjectID(tokenDetails["uid"])}
+            {token: request.header("e-token")}
         )
         .then((_dbResult) => {
             return response.json({
                 code: 0,
-                message: Constants.RECORD_UPDATED,
+                message: Constants.RECORD_DELETED,
                 data: _dbResult.result
             });
         })
