@@ -9,4 +9,5 @@ export class Constants {
     public static INVALID_TOKEN = 'Invalid token';
 
     public static RECORD_UPDATED = 'Record updated';
+    public static RECORD_DELETED = 'Record deleted';
 }

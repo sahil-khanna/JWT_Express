@@ -11,6 +11,7 @@ export class TokenController {
     constructor() {
         this.generate = this.generate.bind(this);
         this.update = this.update.bind(this);
+        this.delete = this.delete.bind(this);
     }
 
     public generate(request: Request, response: Response) {
@@ -115,6 +116,47 @@ export class TokenController {
             return response.json({
                 code: 0,
                 data: entries
+            });
+        })
+        .catch((_error) => {
+            return response.json({
+                code: -100,
+                message: _error.message
+            });
+        });
+    }
+
+    public delete(request: Request, response: Response) {
+        request.checkHeaders('e-token', Constants.INVALID_TOKEN).isString();
+
+        let errors: any = request.validationErrors();
+
+        if (errors !== false) {
+			return response.json({
+				code: -1,
+				message: errors[0].msg
+			});
+        }
+
+        var tokenDetails = null;
+        try {
+            tokenDetails = jwt.verify(request.header("e-token"), this.JWT_PASSWORD);
+        } catch(err) {
+            return response.json({
+                code: 404,
+                message: Constants.INVALID_TOKEN
+            });
+        }
+
+        // Delete the existing record
+        dbHelper.db.collection("clients").deleteOne(
+            {_id: new ObjectID(tokenDetails["uid"])}
+        )
+        .then((_dbResult) => {
+            return response.json({
+                code: 0,
+                message: Constants.RECORD_UPDATED,
+                data: _dbResult.result
             });
         })
         .catch((_error) => {

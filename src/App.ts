@@ -51,7 +51,8 @@ class App {
 
 		app.post(urlPrefix + 'token', new TokenController().generate);
 		app.put(urlPrefix + 'token', new TokenController().update);
-		app.post(urlPrefix + 'token', new TokenController().get);
+		app.get(urlPrefix + 'token', new TokenController().get);
+		app.delete(urlPrefix + 'token', new TokenController().delete);
 		// app.post(urlPrefix + 'register', new UserController().register);
 		// app.put(urlPrefix + 'profile', new UserController().profile);
 		// app.get(urlPrefix + 'activate-account/*', new UserController().activateAccount);
