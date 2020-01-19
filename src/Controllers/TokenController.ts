@@ -1,9 +1,8 @@
 import { Request, Response } from 'express';
-import { checkSchema } from 'express-validator/check';
 import { Constants } from '../Helper/Constants';
-import * as jsonwebtoken from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 import { dbHelper } from '../Helper/DBHelper';
-import { Db } from 'mongodb';
+import { ObjectID } from 'mongodb';
 
 export class TokenController {
 
@@ -11,12 +10,14 @@ export class TokenController {
 
     constructor() {
         this.generate = this.generate.bind(this);
+        this.update = this.update.bind(this);
     }
 
     public generate(request: Request, response: Response) {
         request.checkBody('issuer.clientEmail', Constants.INVALID_CLIENT_EMAIL).isEmail();
         request.checkBody('issuer.clientCompany', Constants.INVALID_CLIENT_COMPANY).isString();
         request.checkBody('issuer.providerEmail', Constants.INVALID_PROVIDER_EMAIL).isEmail();
+        // request.checkBody('issuer.expiresOn', Constants.INVALID_EXPIRY_DATE).toDate();
         request.checkBody('authorizedURLs', Constants.INVALID_AUTHORIZED_URLS).isArray();
 
         let errors: any = request.validationErrors();
@@ -28,17 +29,99 @@ export class TokenController {
 			});
         }
 
-        dbHelper.db.collection("clients").insertOne(request.body)
-        .then((_dbResult) => {
-            console.log(_dbResult);
-        })
-        
-        var token = jsonwebtoken.sign(request.body, this.JWT_PASSWORD, {
-            expiresIn: Math.floor(Date.now() / 1000) + (60 * 60)
-        });
+        // Generate JWT and save to DB along with its payload
+        let objId = new ObjectID();        
+        let token = jwt.sign({uid: objId}, this.JWT_PASSWORD);
 
-        // var token = jsonwebtoken.sign({ foo: 'bar' }, 'shhhhh');
-        // console.log(token);
-        return response.json(request.body);
+        let payload = {
+            _id: objId,
+            token: token,
+            data: {
+                issuer: request.body["issuer"],
+                authorizedURLs: request.body["authorizedURLs"],
+            },
+            status: true
+        }
+
+        dbHelper.db.collection("clients").insertOne(payload)
+        .then((_dbResult) => {
+            return response.json({
+                code: 0,
+                data: {
+                    token: token,
+                    data: _dbResult.result
+                }
+            });
+        })
+        .catch((_error) => {
+            return response.json({
+                code: -100,
+                message: _error.message
+            });
+        });
+    }
+
+    public update(request: Request, response: Response) {
+        request.checkBody('authorizedURLs', Constants.INVALID_AUTHORIZED_URLS).isArray();
+        request.checkBody('status', Constants.INVALID_TOKEN_STATUS).isBoolean();
+        request.checkHeaders('e-token', Constants.INVALID_TOKEN).isString();
+
+        let errors: any = request.validationErrors();
+
+        if (errors !== false) {
+			return response.json({
+				code: -1,
+				message: errors[0].msg
+			});
+        }
+
+        var tokenDetails = null;
+        try {
+            tokenDetails = jwt.verify(request.header("e-token"), this.JWT_PASSWORD);
+        } catch(err) {
+            return response.json({
+                code: 404,
+                message: Constants.INVALID_TOKEN
+            });
+        }
+
+        // Update the existing record
+        dbHelper.db.collection("clients").updateOne(
+            {_id: new ObjectID(tokenDetails["uid"])},
+            {$set: {
+                status: request.body["status"],
+                "data.authorizedURLs": request.body["authorizedURLs"],
+                "data.issuer.expiresOn": request.body["issuer.expiresOn"]
+            }})
+        .then((_dbResult) => {
+            return response.json({
+                code: 0,
+                message: Constants.RECORD_UPDATED,
+                data: _dbResult.result
+            });
+        })
+        .catch((_error) => {
+            return response.json({
+                code: -100,
+                message: _error.message
+            });
+        });
+    }
+
+    public get(request: Request, response: Response) {
+        // Update the existing record
+        dbHelper.db.collection("clients").find().toArray()
+        .then((entries) => {
+            return response.json({
+                code: 0,
+                data: entries
+            });
+        })
+        .catch((_error) => {
+            return response.json({
+                code: -100,
+                message: _error.message
+            });
+        });
     }
 }

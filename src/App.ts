@@ -50,7 +50,8 @@ class App {
 		const app = this.express;
 
 		app.post(urlPrefix + 'token', new TokenController().generate);
-		// app.post(urlPrefix + 'login', new UserController().login);
+		app.put(urlPrefix + 'token', new TokenController().update);
+		app.post(urlPrefix + 'token', new TokenController().get);
 		// app.post(urlPrefix + 'register', new UserController().register);
 		// app.put(urlPrefix + 'profile', new UserController().profile);
 		// app.get(urlPrefix + 'activate-account/*', new UserController().activateAccount);

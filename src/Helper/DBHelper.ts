@@ -8,7 +8,7 @@ class DBHelper {
 	public async connect() {
 		try {
 			const client = await MongoClient.connect('mongodb://127.0.0.1:27017');
-			this.db = client.db('admin');
+			this.db = client.db('jwt');
 			console.log('DB Connected');
 		}
 		catch (error) {
