@@ -6,12 +6,13 @@ import { ObjectID } from 'mongodb';
 
 export class TokenController {
 
-    private JWT_PASSWORD = "NFjNQa4bA&rc%Sq";
+    private readonly JWT_PASSWORD = "NFjNQa4bA&rc%Sq";
 
     constructor() {
         this.generate = this.generate.bind(this);
         this.update = this.update.bind(this);
         this.delete = this.delete.bind(this);
+        this.validate = this.validate.bind(this);
     }
 
     public generate(request: Request, response: Response) {
@@ -19,7 +20,7 @@ export class TokenController {
         request.checkBody('issuer.clientCompany', Constants.INVALID_CLIENT_COMPANY).isString();
         request.checkBody('issuer.providerEmail', Constants.INVALID_PROVIDER_EMAIL).isEmail();
         request.checkBody('expiresOn', Constants.INVALID_EXPIRY_DATE).isNumeric();
-        request.checkBody('authorizedURLs', Constants.INVALID_AUTHORIZED_URLS).isArray();
+        request.checkBody('authorizedMethods', Constants.INVALID_AUTHORIZED_METHODS).isArray().notEmpty();
 
         let errors: any = request.validationErrors();
 
@@ -39,7 +40,7 @@ export class TokenController {
             token: token,
             data: {
                 issuer: request.body["issuer"],
-                authorizedURLs: request.body["authorizedURLs"],
+                authorizedMethods: request.body["authorizedMethods"],
                 expiresOn: request.body["expiresOn"]
             },
             status: true
@@ -64,9 +65,9 @@ export class TokenController {
     }
 
     public update(request: Request, response: Response) {
-        request.checkBody('authorizedURLs', Constants.INVALID_AUTHORIZED_URLS).isArray();
+        request.checkBody('authorizedMethods', Constants.INVALID_AUTHORIZED_METHODS).isArray().notEmpty();
         request.checkBody('status', Constants.INVALID_TOKEN_STATUS).isBoolean();
-        request.checkHeaders('e-token', Constants.INVALID_TOKEN).isString();
+        request.checkBody('token', Constants.INVALID_TOKEN).isString();
 
         let errors: any = request.validationErrors();
 
@@ -79,10 +80,10 @@ export class TokenController {
 
         var tokenDetails = null;
         try {
-            tokenDetails = jwt.verify(request.header("e-token"), this.JWT_PASSWORD);
+            tokenDetails = jwt.verify(request.body['token'], this.JWT_PASSWORD);
         } catch(err) {
             return response.json({
-                code: 404,
+                code: Constants.INVALID_TOKEN_CODE,
                 message: Constants.INVALID_TOKEN
             });
         }
@@ -92,7 +93,7 @@ export class TokenController {
             {_id: new ObjectID(tokenDetails["uid"])},
             {$set: {
                 status: request.body["status"],
-                "data.authorizedURLs": request.body["authorizedURLs"],
+                "data.authorizedMethods": request.body["authorizedMethods"],
                 "data.expiresOn": request.body["expiresOn"]
             }})
         .then((_dbResult) => {
@@ -128,7 +129,7 @@ export class TokenController {
     }
 
     public delete(request: Request, response: Response) {
-        request.checkHeaders('e-token', Constants.INVALID_TOKEN).isString();
+        request.checkBody('token', Constants.INVALID_TOKEN).isString();
 
         let errors: any = request.validationErrors();
 
@@ -141,7 +142,7 @@ export class TokenController {
 
         // Delete the existing record
         dbHelper.db.collection("clients").deleteOne(
-            {token: request.header("e-token")}
+            {token: request.body['token']}
         )
         .then((_dbResult) => {
             return response.json({
@@ -155,6 +156,62 @@ export class TokenController {
                 code: -100,
                 message: _error.message
             });
+        });
+    }
+
+    public validate(request: Request, response: Response) {
+        request.checkBody('token', Constants.UNAUTHORIZED_ACCESS).isString();
+        request.checkBody('method', Constants.INVALID_METHOD).isString();
+        request.checkBody('verb', Constants.INVALID_VERB).isString();
+
+        let errors: any = request.validationErrors();
+
+        if (errors !== false) {
+			return response.json({
+				code: -1,
+				message: errors[0].msg
+			});
+        }
+
+        let tokenDetails = null;
+		try {
+			tokenDetails = jwt.verify(request.body['token'], this.JWT_PASSWORD);
+		} catch(err) {
+			return response.json({
+				code: Constants.UNAUTHORIZED_ACCESS_CODE,
+				message: Constants.UNAUTHORIZED_ACCESS
+			});
+        }
+        
+        dbHelper.db.collection('clients').findOne(
+            {
+                _id: new ObjectID(tokenDetails["uid"]),
+                status: true,
+                "data.authorizedMethods": { $elemMatch: {
+                    name: request.body['method'],
+                    verbs: {$in: [request.body['verb']]}
+                } },
+            }
+        )
+        .catch((_error) => {
+            return response.json({
+                code: -100,
+                message: _error.message
+            });
+        })
+        .then((_dbResult) => {
+            if (_dbResult) {
+                return response.json({
+                    code: 0,
+                    message: Constants.AUTHORIZED_ACCESS
+                });
+            }
+            else {
+                return response.json({
+                    code: Constants.UNAUTHORIZED_ACCESS_CODE,
+                    message: Constants.UNAUTHORIZED_ACCESS
+                });
+            }
         });
     }
 }
