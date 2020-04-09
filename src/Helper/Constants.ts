@@ -3,6 +3,7 @@ export class Constants {
     public static readonly INVALID_CLIENT_EMAIL = 'Invalid client email';
     public static readonly INVALID_CLIENT_COMPANY = 'Invalid client company';
     public static readonly INVALID_PROVIDER_EMAIL = 'Invalid provider email';
+    public static readonly INVALID_DESCRIPTION = 'Invalid description';
     public static readonly INVALID_EXPIRY_DATE = 'Invalid expiry date';
     public static readonly INVALID_AUTHORIZED_METHODS = 'Invalid authorized methods';
 
@@ -18,4 +19,5 @@ export class Constants {
 
     public static readonly RECORD_UPDATED = 'Record updated';
     public static readonly RECORD_DELETED = 'Record deleted';
+    public static readonly RECORD_ADDED = 'Record added';
 }

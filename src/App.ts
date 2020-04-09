@@ -29,6 +29,14 @@ class App {
 	private routes(): void {
 		const app = this.express;
 
+		// Allow access from all origins. NOT TO BE USED IN PRODUCTION CODE
+		app.use(function(request, response, next) {
+			response.header("Access-Control-Allow-Origin", "*");
+			response.header("Access-Control-Allow-Headers", "*");
+			response.header("Access-Control-Allow-Methods", "*");
+			next();
+		});
+
 		const URL_PREFIX = '/api/1.0/';
 		app.post(URL_PREFIX + 'token', new TokenController().generate);
 		app.put(URL_PREFIX + 'token', new TokenController().update);

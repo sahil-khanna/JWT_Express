@@ -19,6 +19,7 @@ export class TokenController {
         request.checkBody('issuer.clientEmail', Constants.INVALID_CLIENT_EMAIL).isEmail();
         request.checkBody('issuer.clientCompany', Constants.INVALID_CLIENT_COMPANY).isString();
         request.checkBody('issuer.providerEmail', Constants.INVALID_PROVIDER_EMAIL).isEmail();
+        request.checkBody('issuer.description', Constants.INVALID_DESCRIPTION).isString();
         request.checkBody('expiresOn', Constants.INVALID_EXPIRY_DATE).isNumeric();
         request.checkBody('authorizedMethods', Constants.INVALID_AUTHORIZED_METHODS).isArray().notEmpty();
 
@@ -53,7 +54,8 @@ export class TokenController {
                 data: {
                     token: token,
                     data: _dbResult.result
-                }
+                },
+                message: Constants.RECORD_ADDED
             });
         })
         .catch((_error) => {
@@ -65,6 +67,8 @@ export class TokenController {
     }
 
     public update(request: Request, response: Response) {
+        request.checkBody('issuer.description', Constants.INVALID_DESCRIPTION).isString();
+        request.checkBody('expiresOn', Constants.INVALID_EXPIRY_DATE).isNumeric();
         request.checkBody('authorizedMethods', Constants.INVALID_AUTHORIZED_METHODS).isArray().notEmpty();
         request.checkBody('status', Constants.INVALID_TOKEN_STATUS).isBoolean();
         request.checkBody('token', Constants.INVALID_TOKEN).isString();
@@ -94,7 +98,8 @@ export class TokenController {
             {$set: {
                 status: request.body["status"],
                 "data.authorizedMethods": request.body["authorizedMethods"],
-                "data.expiresOn": request.body["expiresOn"]
+                "data.expiresOn": request.body["expiresOn"],
+                "data.issuer.description": request.body["issuer"]["description"]
             }})
         .then((_dbResult) => {
             return response.json({
@@ -182,15 +187,15 @@ export class TokenController {
 				message: Constants.UNAUTHORIZED_ACCESS
 			});
         }
-        
+
         dbHelper.db.collection('clients').findOne(
             {
                 _id: new ObjectID(tokenDetails["uid"]),
                 status: true,
                 "data.authorizedMethods": { $elemMatch: {
                     name: request.body['method'],
-                    verbs: {$in: [request.body['verb']]}
-                } },
+                    verbs: {$in: [request.body['verb']]},
+                } }
             }
         )
         .catch((_error) => {
@@ -200,7 +205,8 @@ export class TokenController {
             });
         })
         .then((_dbResult) => {
-            if (_dbResult) {
+            // console.log(_dbResult.data.expiresOn);
+            if (_dbResult && _dbResult.data.expiresOn > new Date().getTime()) {
                 return response.json({
                     code: 0,
                     message: Constants.AUTHORIZED_ACCESS
