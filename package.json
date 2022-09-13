@@ -1,5 +1,5 @@
 {
-  "name": "jwt express",
+  "name": "jwt-express",
   "version": "1.0.0",
   "description": "API that interacts with the UI, creates and manages JWT.",
   "main": "index.js",
